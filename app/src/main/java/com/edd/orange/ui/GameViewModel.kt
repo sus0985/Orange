@@ -1,5 +1,6 @@
 package com.edd.orange.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.edd.orange.model.GameState
 import com.edd.orange.model.GameStatus
@@ -14,38 +15,48 @@ class GameViewModel @Inject constructor() : ViewModel() {
 
     sealed class GameIntent {
         data object StartGame : GameIntent()
-        data class OnDragStart(val startX: Float, val startY: Float) : GameIntent()
-
-        data class OnDragEnd(val endX: Float, val endY: Float) : GameIntent()
+        data class EndGame(val score: Int) : GameIntent()
     }
 
 
     private val _gameStateFlow = MutableStateFlow(GameState())
     val gameStateFlow = _gameStateFlow.asStateFlow()
 
+    private val _isDragging = MutableStateFlow(false)
+    val isDragging = _isDragging.asStateFlow()
+
+    private val _remainingTime = MutableStateFlow(0L)
+    val remainingTime = _remainingTime.asStateFlow()
+
 
     fun handleIntent(intent: GameIntent) {
         when (intent) {
             is GameIntent.StartGame -> startGame()
-            is GameIntent.OnDragStart -> onDragStart(intent.startX, intent.startY)
-            is GameIntent.OnDragEnd -> onDragEnd(intent.endX, intent.endY)
+            is GameIntent.EndGame -> {
+                _gameStateFlow.value = _gameStateFlow.value.copy(
+                    gameStatus = GameStatus.GAME_OVER,
+                    score = intent.score
+                )
+            }
         }
     }
+
+    fun setDragging(isDragging: Boolean) {
+        _isDragging.value = isDragging
+    }
+
+    fun updateRemainingTime(time: Long) {
+        _remainingTime.value = time
+    }
+
 
     private fun startGame() {
         _gameStateFlow.value = GameState(
             oranges = generateOranges(),
-            score = 0,
-            gameStatus = GameStatus.IN_PROGRESS, // 게임 진행 상태
-            playingTime = 120000L // 2분
+            gameStatus = GameStatus.IN_PROGRESS,
         )
-    }
 
-    private fun onDragStart(startX: Float, startY: Float) {
-
-    }
-
-    private fun onDragEnd(endX: Float, endY: Float) {
+        _remainingTime.value = 120000L
     }
 
     private fun generateOranges(): List<Orange> {
@@ -62,7 +73,7 @@ class GameViewModel @Inject constructor() : ViewModel() {
         return buildList {
             (0 until 10).forEach { row ->
                 (0 until 16).forEach { col ->
-                    add(Orange(row, col, values[row * 10 + col]))
+                    add(Orange(values[row * 10 + col]))
                 }
             }
         }

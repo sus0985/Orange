@@ -11,5 +11,4 @@ data class GameState(
     val oranges: List<Orange> = emptyList(),
     val score: Int = 0,
     val gameStatus: GameStatus = GameStatus.WAITING,
-    val playingTime: Long = 120000L
 )

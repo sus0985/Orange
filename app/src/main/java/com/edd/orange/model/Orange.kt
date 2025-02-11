@@ -5,9 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 data class Orange(
-    var x: Int,
-    var y: Int,
-    val value: Int
+    val value: Int,
+    var x: Float = 0f,
+    var y: Float = 0f
 ) {
     var removed by mutableStateOf(false)
 }
