@@ -1,16 +1,15 @@
 package com.edd.orange.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -19,12 +18,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.changedToUp
@@ -33,10 +34,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toOffset
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.edd.orange.model.GameStatus
 import com.edd.orange.model.Orange
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 
@@ -48,9 +51,11 @@ fun GameScreen(
     val gameState by viewModel.gameStateFlow.collectAsStateWithLifecycle()
 
     val remainingTime by remember { mutableLongStateOf(gameState.playingTime) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
-
+    var startX by remember { mutableIntStateOf(0) }
+    var startY by remember { mutableIntStateOf(0) }
+    var currentX by remember { mutableIntStateOf(0) }
+    var currentY by remember { mutableIntStateOf(0) }
+    var isDragging by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -71,24 +76,31 @@ fun GameScreen(
                 RemainingTime(timeRemaining = remainingTime)
                 Box(modifier = Modifier
                     .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            offsetX += dragAmount.x
-                            offsetY += dragAmount.y
-                            when {
-                                change.changedToDown() -> viewModel.handleIntent(
-                                    GameViewModel.GameIntent.OnDragStart(
-                                        dragAmount.x,
-                                        dragAmount.y
-                                    )
-                                )
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.first()
 
-                                change.changedToUp() -> viewModel.handleIntent(
-                                    GameViewModel.GameIntent.OnDragEnd(
-                                        dragAmount.x,
-                                        dragAmount.y
-                                    )
-                                )
+                                when {
+                                    change.changedToDown() -> {
+                                        startX = change.position.x.roundToInt()
+                                        startY = change.position.y.roundToInt()
+                                        currentX = change.position.x.roundToInt()
+                                        currentY = change.position.y.roundToInt()
+                                        isDragging = true
+                                    }
+                                    change.changedToUp() -> {
+                                        isDragging = false
+                                        viewModel.handleIntent(GameViewModel.GameIntent.OnDragEnd(
+                                            change.position.x,
+                                            change.position.y
+                                        ))
+                                    }
+                                    else -> {
+                                        currentX = change.position.x.roundToInt()
+                                        currentY = change.position.y.roundToInt()
+                                    }
+                                }
                             }
                         }
                     }
@@ -107,11 +119,20 @@ fun GameScreen(
                             OrangeCell(orange = orange)
                         }
                     }
-                    Box(modifier = Modifier
-                        .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
-                        .background(Color.Blue)
-                        .size(50.dp)
-                    )
+
+                    if (isDragging) {
+                        val left = minOf(startX, currentX)
+                        val top = minOf(startY, currentY)
+                        val width = abs(currentX - startX).dp
+                        val height = abs(currentY - startY).dp
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            drawRect(
+                                color = Color(0x5500A500),
+                                topLeft = IntOffset(left, top).toOffset(),
+                                size = Size(width.value, height.value)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -132,18 +153,23 @@ fun RemainingTime(timeRemaining: Long) {
 
 @Composable
 fun OrangeCell(orange: Orange) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .aspectRatio(1f)
             .background(Color(0xFFFFA500), shape = CircleShape) // 오렌지 색상과 원형 모양
             .padding(5.dp)
     ) {
+
+        orange.x = maxWidth.value.roundToInt() / 2
+        orange.y = maxHeight.value.roundToInt() / 2
+
         Text(
             text = orange.value.toString(),
             modifier = Modifier.align(Alignment.Center),
             color = Color.Black,
             fontSize = 14.sp
         )
+
     }
 }
 

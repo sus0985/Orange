@@ -1,6 +1,5 @@
 package com.edd.orange.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.edd.orange.model.GameState
 import com.edd.orange.model.GameStatus
@@ -30,7 +29,6 @@ class GameViewModel @Inject constructor() : ViewModel() {
             is GameIntent.StartGame -> startGame()
             is GameIntent.OnDragStart -> onDragStart(intent.startX, intent.startY)
             is GameIntent.OnDragEnd -> onDragEnd(intent.endX, intent.endY)
-
         }
     }
 
@@ -44,16 +42,10 @@ class GameViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun onDragStart(startX: Float, startY: Float) {
-        Log.d("asdf", "onDragStart() called with: startX = $startX, startY = $startY")
-//        _gameStateFlow.update { state ->
-//            state.copy(dragStart = startX to startY)
-//        }
+
     }
 
     private fun onDragEnd(endX: Float, endY: Float) {
-        Log.d("asdf", "onDragEnd() called with: endX = $endX, endY = $endY")
-        val (startX, startY) = gameStateFlow.value.dragStart ?: return
-
     }
 
     private fun generateOranges(): List<Orange> {
